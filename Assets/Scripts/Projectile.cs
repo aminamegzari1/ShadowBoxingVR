@@ -1,52 +1,122 @@
 using UnityEngine;
+// Ajoute cette ligne uniquement si tu utilises XR Toolkit
+#if UNITY_XR_MANAGEMENT
+using UnityEngine.XR.Interaction.Toolkit;
+#endif
 
 public class Projectile : MonoBehaviour
 {
-    [Header("Movement")]
+    [Header("Movement Settings")]
     public float speed = 3f;
     public float lifeTime = 5f;
-    
-    [Header("Type")]
+
+    [Header("Gameplay")]
     public bool isObstacle = false;
-    
+    public int targetScore = 10;
+    public int obstaclePenalty = -10;
+    [Tooltip("Vitesse minimale pour valider un coup")]
+    public float requiredSpeed = 0.3f; // abaissé pour faciliter les tests
+
+    [Header("Impact Feedback")]
+    public GameObject impactEffectPrefab;
+    public AudioClip impactSound;
+    public float impactVolume = 0.8f;
+
+    private AudioSource audioSource;
+
     void Start()
     {
-        // Auto-destruction après X secondes
+        // Auto-détruit après X secondes
         Destroy(gameObject, lifeTime);
-    }
-    
-    void Update()
-    {
-        // Avance vers le joueur (direction -Z)
-        transform.Translate(Vector3.back * speed * Time.deltaTime);
-    }
-    
-    void OnCollisionEnter(Collision collision)
-    {
-        // Vérifie si c'est une main
-        if (collision.gameObject.CompareTag("Hand"))
+
+        // Configure l’audio
+        if (impactSound != null)
         {
-            if (isObstacle)
-            {
-                // Obstacle touché = pénalité
-                Debug.Log("❌ OBSTACLE TOUCHÉ ! -10 points");
-                GameManager gm = FindObjectOfType<GameManager>();
-                if (gm != null) gm.AddScore(-10);
-            }
-            else
-            {
-                // Cible touchée = points
-                PunchDetector punch = collision.gameObject.GetComponent<PunchDetector>();
-                if (punch != null && punch.speed >= 1.5f)
-                {
-                    Debug.Log($"🎯 CIBLE TOUCHÉE ! +10 points (vitesse: {punch.speed:F2})");
-                    GameManager gm = FindObjectOfType<GameManager>();
-                    if (gm != null) gm.AddScore(10);
-                }
-            }
-            
-            // Détruit l'objet
-            Destroy(gameObject);
+            audioSource = gameObject.AddComponent<AudioSource>();
+            audioSource.playOnAwake = false;
+            audioSource.spatialBlend = 1f;
         }
     }
+
+    void Update()
+    {
+        // Fait avancer le projectile vers le joueur (-Z)
+        transform.Translate(Vector3.back * speed * Time.deltaTime);
+    }
+
+    void OnTriggerEnter(Collider other)
+    {
+        Debug.Log($"🚀 Trigger détecté avec: {other.name}, Tag: {other.tag}");
+
+        // Vérifie que c'est bien la main
+        if (!other.CompareTag("Hand"))
+        {
+            Debug.Log("⚠️ Ce n'est pas la main, aucune action.");
+            return;
+        }
+
+        Debug.Log("✋ Collision avec la main confirmée !");
+        GameManager gm = FindFirstObjectByType<GameManager>();
+        PunchDetector punch = other.GetComponent<PunchDetector>();
+
+        if (punch != null)
+            Debug.Log($"💨 Vitesse de la main: {punch.speed:F2} m/s");
+
+        // Gestion score
+        if (isObstacle)
+        {
+            gm?.AddScore(obstaclePenalty);
+            Debug.Log($"❌ OBSTACLE TOUCHÉ ! Score: {gm?.GetScore()}");
+        }
+        else if (punch != null && punch.speed >= requiredSpeed)
+        {
+            gm?.AddScore(targetScore);
+            Debug.Log($"🎯 CIBLE TOUCHÉE ! +{targetScore} points — Score total: {gm?.GetScore()}");
+        }
+        else
+        {
+            Debug.Log($"⚠️ Coup trop lent ({punch?.speed:F2} m/s) — Aucun point.");
+            return;
+        }
+
+        // Effets visuels / sonores
+        ShowImpactEffect();
+        PlayImpactSound();
+
+        // Optionnel : vibration XR
+        TrySendHaptic(other);
+
+        // Détruit la cible
+        Destroy(gameObject);
+    }
+
+    void ShowImpactEffect()
+    {
+        if (impactEffectPrefab != null)
+        {
+            Instantiate(impactEffectPrefab, transform.position, Quaternion.identity);
+        }
+    }
+
+    void PlayImpactSound()
+    {
+        if (impactSound != null && audioSource != null)
+        {
+            audioSource.PlayOneShot(impactSound, impactVolume);
+        }
+    }
+
+#if UNITY_XR_MANAGEMENT
+    // ✅ Compatible XR Interaction Toolkit 3.0+
+    void TrySendHaptic(Collider hand)
+    {
+        var controller = hand.GetComponent<XRController>();
+        if (controller != null && controller.haptics != null)
+        {
+            controller.haptics.SendHapticImpulse(0.8f, 0.15f);
+        }
+    }
+#else
+    void TrySendHaptic(Collider hand) { /* Pas de XR -> rien */ }
+#endif
 }
