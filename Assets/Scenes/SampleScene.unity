@@ -1104,7 +1104,7 @@ PrefabInstance:
     - target: {fileID: -7511558181221131132, guid: 30468754a644e9e49ada8dcb1646be6d, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
       value: 
-      objectReference: {fileID: 2100000, guid: 8966a09ec81094fca94186a87a695532, type: 2}
+      objectReference: {fileID: 2100000, guid: 09a840b132f4efa43991db12f9956e7b, type: 2}
     - target: {fileID: 919132149155446097, guid: 30468754a644e9e49ada8dcb1646be6d, type: 3}
       propertyPath: m_Name
       value: Env_Wall1
