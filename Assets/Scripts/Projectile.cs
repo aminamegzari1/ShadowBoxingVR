@@ -5,9 +5,10 @@ public class Projectile : MonoBehaviour
     [Header("Movement")]
     public float speed = 3f;
     public float lifeTime = 5f;
-    
+
     [Header("Type")]
     public bool isObstacle = false;
+    private bool hasBeenHit = false;
     
     void Start()
     {
@@ -49,4 +50,23 @@ public class Projectile : MonoBehaviour
             Destroy(gameObject);
         }
     }
+    void OnDestroy()
+{
+    // Si l'objet est détruit sans être touché
+    if (!hasBeenHit)
+    {
+        GameManager gm = FindFirstObjectByType<GameManager>();
+        if (isObstacle)
+        {
+            // OBSTACLE évité ! +5 points
+            Debug.Log("🚧 OBSTACLE ÉVITÉ ! +5 points");
+            if (gm != null) gm.AddScore(5);
+        }
+        else
+        {
+            // CIBLE manquée, pas de points
+        }
+    }
+}
+
 }
